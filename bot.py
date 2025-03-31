@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 import random
+import csv
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
@@ -14,15 +15,58 @@ bot = commands.Bot(command_prefix=".", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"{bot.user}[:-5] установленна (◕‿◕✿) ")
+    print(f"{bot.user} установленна (◕‿◕✿) ")
 
 @bot.command()
-async def ping(ctx):
+async def привет(ctx):
     await ctx.send("pong")
 
+# Загрузка запрещенных слов из CSV файла
+forbidden_words = []
+try:
+    with open('filter.csv', mode='r', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if row:  # Проверяем, что строка не пустая
+                forbidden_words.extend(row)
+    print(f"Загружено {len(forbidden_words)} запрещенных слов")
+    #print(forbidden_words)
+except FileNotFoundError:
+    print("Внимание: файл filter.csv не найден!")
+except Exception as e:
+    print(f"Ошибка при чтении файла filter.csv: {e}")
+
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+
+    if any(word in message.content.lower() for word in forbidden_words):
+        await message.delete()
+        await message.channel.send(f"{message.author.mention}, ваше сообщение было удалено из-за использования запрещенных слов.")
+    
+    await bot.process_commands(message)
+
+
+@bot.event
+async def on_member_join(member):
+    channel = discord.utils.get(member.guild.text_channels, name='полигон')  # Замените 'general' на имя вашего канала
+    if channel:
+        await channel.send(f"Привет, {member.mention}! Добро пожаловать на сервер!")
+
+@bot.event
+async def on_ready():
+    channel = discord.utils.get(bot.guilds[0].text_channels, name='полигон')  # Замените 'general' на имя вашего канала
+    if channel:
+        await channel.send(f"Аллах возроди \nПривет всем! Я {bot.user.name}, рада вас видеть! (◕‿◕✿)")
+
 @bot.command()
-async def pleaseDie(ctx):
-    await ctx.send("I`m dying... urgkh..")
+async def спасибо(ctx):
+    await ctx.send("Всегда пожалуйста! (◕‿◕✿)")
+
+@bot.command()
+async def brexit(ctx):
+    await ctx.send("-1")
     await bot.close()
 
 @bot.command()
@@ -33,6 +77,4 @@ async def roll(ctx):
 async def game(ctx):
     await ctx.send(random.choice(["rock", "paper", "scisors"]))
 
-
-# Используем токен из переменных окружения
 bot.run(os.getenv('DISCORD_TOKEN'))
